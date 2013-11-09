@@ -1,11 +1,13 @@
 package com.example.dehaze;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
 import uk.co.senab.photoview.PhotoViewAttacher;
 import uk.co.senab.photoview.PhotoViewAttacher.OnPhotoTapListener;
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
@@ -28,7 +30,10 @@ import android.widget.ImageView;
 import android.widget.ImageView.ScaleType;
 import android.widget.Toast;
 
-import com.parse.ParseAnalytics;
+import com.parse.ParseException;
+import com.parse.ParseFile;
+import com.parse.ParseObject;
+import com.parse.SaveCallback;
 
 import easyimage.slrcamera.ImageProcessX;
 
@@ -73,8 +78,6 @@ public class EditActivity extends Activity implements OnClickListener {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 
-		ParseAnalytics.trackAppOpened(getIntent());
-
 		setContentView(R.layout.activity_edit);
 
 		mOriginImageView = (ImageView) findViewById(R.id.origin_image);
@@ -115,6 +118,9 @@ public class EditActivity extends Activity implements OnClickListener {
 		switch (item.getItemId()) {
 		case R.id.action_select:
 			pickImage();
+			return true;
+		case R.id.action_upload:
+			uploadImage();
 			return true;
 		default:
 			return super.onOptionsItemSelected(item);
@@ -305,6 +311,109 @@ public class EditActivity extends Activity implements OnClickListener {
 		inSampleSize = Math.round(Math.max(width / (float) reqWidth, height
 				/ (float) reqHeight));
 		Log.v(TAG, "inSampleSize: " + inSampleSize);
-		return inSampleSize;
+		return inSampleSize * 2;
 	}
+
+	private byte[] getBytes(Bitmap bmp) {
+		ByteArrayOutputStream stream = new ByteArrayOutputStream();
+		try {
+			bmp.compress(Bitmap.CompressFormat.JPEG, 80, stream);
+			return stream.toByteArray();
+		} finally {
+			try {
+				stream.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	private void showToast(String msg) {
+		Toast.makeText(this, msg, Toast.LENGTH_LONG).show();
+	}
+
+	private ProgressDialog mProgressDialog;
+
+	private void showUploadDialog() {
+		mProgressDialog = new ProgressDialog(this);
+		mProgressDialog.setMessage("Uploading...");
+		mProgressDialog.setCancelable(false);
+		mProgressDialog.show();
+	}
+
+	private void dismissUploadDialog() {
+		if (mProgressDialog != null) {
+			mProgressDialog.dismiss();
+		}
+	}
+
+	private void showUploadError(Exception e) {
+		dismissUploadDialog();
+		showToast(e.getMessage());
+	}
+
+	private ParseFile mOriginFile, mResultFile;
+
+	private final SaveCallback mSaveOriginCallback = new SaveCallback() {
+		@Override
+		public void done(ParseException e) {
+			if (e != null) {
+				showUploadError(e);
+				return;
+			}
+			mResultFile = new ParseFile("result.jpg", getBytes(mResultBitmap));
+			mResultFile.saveInBackground(mSaveResultCallback);
+		}
+	};
+
+	private float getRandomLatitude() {
+		float minLat = -90f;
+		float maxLat = 90f;
+		return minLat + ((float) Math.random() * (maxLat - minLat));
+	}
+
+	private float getRandomLongitude() {
+		float minLon = 0f;
+		float maxLon = 180f;
+		return minLon + ((float) Math.random() * (maxLon - minLon));
+	}
+
+	private final SaveCallback mSaveResultCallback = new SaveCallback() {
+		@Override
+		public void done(ParseException e) {
+			if (e != null) {
+				showUploadError(e);
+				return;
+			}
+			ParseObject upload = new ParseObject("Upload");
+			upload.put("origin", mOriginFile);
+			upload.put("result", mResultFile);
+			upload.put("latitude", getRandomLatitude());
+			upload.put("longitude", getRandomLongitude());
+			upload.saveInBackground(mSaveUploadCallback);
+		}
+	};
+
+	private final SaveCallback mSaveUploadCallback = new SaveCallback() {
+		@Override
+		public void done(ParseException e) {
+			if (e != null) {
+				showUploadError(e);
+				return;
+			}
+			dismissUploadDialog();
+			showToast("Upload successful");
+		}
+	};
+
+	private void uploadImage() {
+		if (mOriginBitmap == null || mResultBitmap == null) {
+			showToast("Nothing to upload");
+			return;
+		}
+		showUploadDialog();
+		mOriginFile = new ParseFile("origin.jpg", getBytes(mOriginBitmap));
+		mOriginFile.saveInBackground(mSaveOriginCallback);
+	}
+
 }

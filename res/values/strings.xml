@@ -3,5 +3,6 @@
 
     <string name="app_name">Dehaze</string>
     <string name="action_select">Select image</string>
+    <string name="action_upload">Upload</string>
 
 </resources>

@@ -4,21 +4,15 @@
     android:layout_height="match_parent"
     tools:context=".EditActivity" >
 
-    <ViewSwitcher
-        android:id="@+id/image_switcher"
+    <ImageView
+        android:id="@+id/origin_image"
         android:layout_width="match_parent"
-        android:layout_height="match_parent" >
+        android:layout_height="match_parent" />
 
-        <ImageView
-            android:id="@+id/origin_image"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
-
-        <ImageView
-            android:id="@+id/result_image"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
-    </ViewSwitcher>
+    <ImageView
+        android:id="@+id/result_image"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
 
     <Button
         android:id="@+id/pick"

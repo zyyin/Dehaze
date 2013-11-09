@@ -17,9 +17,10 @@
         android:label="@string/app_name"
         android:theme="@android:style/Theme.Holo.NoActionBar.Fullscreen" >
         <activity
-            android:name="com.example.dehaze.MainActivity"
-            android:label="@string/app_name"
-            android:screenOrientation="landscape" >
+            android:name="com.example.dehaze.EditActivity"
+            android:label="@string/app_name" >
+
+            <!-- android:screenOrientation="landscape" > -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

@@ -17,7 +17,6 @@ public class CameraPreview extends SurfaceView implements
 
 	private static final String TAG = CameraPreview.class.getCanonicalName();
 
-	private Context mContext;
 	private SurfaceHolder mHolder;
 	private Camera mCamera;
 	private boolean mSurfaceAvailable;
@@ -28,7 +27,6 @@ public class CameraPreview extends SurfaceView implements
 	public CameraPreview(Context context) {
 		super(context);
 
-		mContext = context;
 		mHolder = getHolder();
 		mHolder.addCallback(this);
 		mOrientation = new OrientationListener(context);

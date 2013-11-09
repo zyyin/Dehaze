@@ -27,6 +27,9 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ImageView.ScaleType;
 import android.widget.Toast;
+
+import com.parse.ParseAnalytics;
+
 import easyimage.slrcamera.ImageProcessX;
 
 public class EditActivity extends Activity implements OnClickListener {
@@ -69,6 +72,9 @@ public class EditActivity extends Activity implements OnClickListener {
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+
+		ParseAnalytics.trackAppOpened(getIntent());
+
 		setContentView(R.layout.activity_edit);
 
 		mOriginImageView = (ImageView) findViewById(R.id.origin_image);
@@ -245,7 +251,6 @@ public class EditActivity extends Activity implements OnClickListener {
 
 		@Override
 		protected void onPreExecute() {
-			mPickButton.setEnabled(false);
 			mPickButton.setText("Dehazing...");
 			mPickButton.setVisibility(View.VISIBLE);
 		}
@@ -281,7 +286,6 @@ public class EditActivity extends Activity implements OnClickListener {
 		// Calculate inSampleSize
 		options.inSampleSize = calculateInSampleSize(options, reqWidth,
 				reqHeight);
-		Log.v(TAG, "inSampleSize: " + options.inSampleSize);
 
 		// Decode bitmap with inSampleSize set
 		options.inJustDecodeBounds = false;

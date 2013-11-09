@@ -166,15 +166,9 @@ public class CameraPreview extends SurfaceView implements
 			Camera.CameraInfo info = new android.hardware.Camera.CameraInfo();
 			Camera.getCameraInfo(CameraInfo.CAMERA_FACING_BACK, info);
 			orientation = (orientation + 45) / 90 * 90;
-			int rotation = 0;
-			if (info.facing == CameraInfo.CAMERA_FACING_FRONT) {
-				rotation = (info.orientation - orientation + 360) % 360;
-			} else { // back-facing camera
-				rotation = (info.orientation + orientation) % 360;
-			}
+			int rotation = (info.orientation + orientation) % 360;
 			updateRotation(rotation);
 		}
-
 	}
 
 }

@@ -4,11 +4,21 @@
     android:layout_height="match_parent"
     tools:context=".EditActivity" >
 
-    <ImageView
-        android:id="@+id/image"
+    <ViewSwitcher
+        android:id="@+id/image_switcher"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:scaleType="centerInside" />
+        android:layout_height="match_parent" >
+
+        <ImageView
+            android:id="@+id/origin_image"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <ImageView
+            android:id="@+id/result_image"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+    </ViewSwitcher>
 
     <Button
         android:id="@+id/pick"

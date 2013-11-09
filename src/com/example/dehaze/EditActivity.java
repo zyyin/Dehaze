@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import uk.co.senab.photoview.PhotoViewAttacher;
+import uk.co.senab.photoview.PhotoViewAttacher.OnPhotoTapListener;
 import android.app.Activity;
 import android.content.ContentResolver;
 import android.content.Context;
@@ -26,6 +27,7 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.ImageView.ScaleType;
 import android.widget.Toast;
+import android.widget.ViewSwitcher;
 import easyimage.slrcamera.ImageProcessX;
 
 public class EditActivity extends Activity implements OnClickListener {
@@ -35,14 +37,18 @@ public class EditActivity extends Activity implements OnClickListener {
 	private static final int REQ_PICK_IMAGE = 1;
 
 	private Button mPickButton;
-	private ImageView mImageView;
+	private ViewSwitcher mImageSwitcher;
+	private ImageView mOriginImageView, mResultImageView;
+	private PhotoViewAttacher mOriginAttacher, mResultAttacher;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_edit);
 
-		mImageView = (ImageView) findViewById(R.id.image);
+		mImageSwitcher = (ViewSwitcher) findViewById(R.id.image_switcher);
+		mOriginImageView = (ImageView) findViewById(R.id.origin_image);
+		mResultImageView = (ImageView) findViewById(R.id.result_image);
 		mPickButton = (Button) findViewById(R.id.pick);
 
 		mPickButton.setOnClickListener(this);
@@ -68,7 +74,11 @@ public class EditActivity extends Activity implements OnClickListener {
 
 	@Override
 	public void onClick(View view) {
-		pickImage();
+		switch (view.getId()) {
+		case R.id.pick:
+			pickImage();
+			break;
+		}
 	}
 
 	private void pickImage() {
@@ -77,6 +87,10 @@ public class EditActivity extends Activity implements OnClickListener {
 		intent.setAction(Intent.ACTION_GET_CONTENT);
 		startActivityForResult(Intent.createChooser(intent, "Select Picture"),
 				REQ_PICK_IMAGE);
+	}
+
+	private void switchImage() {
+		mImageSwitcher.showNext();
 	}
 
 	@Override
@@ -112,6 +126,16 @@ public class EditActivity extends Activity implements OnClickListener {
 		new DecodeImageTask(this, uri).execute();
 	}
 
+	private final OnPhotoTapListener mOnPhotoTapListener = new OnPhotoTapListener() {
+
+		@Override
+		public void onPhotoTap(View view, float x, float y) {
+			Log.v(TAG, "photo tap");
+			mImageSwitcher.showNext();
+		}
+
+	};
+
 	private class DecodeImageTask extends AsyncTask<Void, Void, Bitmap> {
 
 		private Context mContext;
@@ -123,11 +147,19 @@ public class EditActivity extends Activity implements OnClickListener {
 		}
 
 		@Override
+		protected void onPreExecute() {
+			mPickButton.setEnabled(false);
+			mPickButton.setText("Loading...");
+			mPickButton.setVisibility(View.VISIBLE);
+			mImageSwitcher.setEnabled(false);
+		}
+
+		@Override
 		protected Bitmap doInBackground(Void... args) {
 			Bitmap bmp;
 			try {
 				bmp = decodeSampledBitmapFromUri(mContext, mUri,
-						mImageView.getWidth(), mImageView.getHeight());
+						mImageSwitcher.getWidth(), mImageSwitcher.getHeight());
 			} catch (IOException e) {
 				e.printStackTrace();
 				return null;
@@ -149,15 +181,16 @@ public class EditActivity extends Activity implements OnClickListener {
 						"Error: unable to load image", Toast.LENGTH_LONG)
 						.show();
 			} else {
-				mImageView.setImageBitmap(result);
-				mImageView.setScaleType(ScaleType.CENTER_INSIDE);
-				new DehazeImageTask(result).execute();
+				mOriginImageView.setImageBitmap(result);
+				mOriginImageView.setScaleType(ScaleType.CENTER_INSIDE);
+				mOriginAttacher = new PhotoViewAttacher(mOriginImageView);
+				mOriginAttacher.setOnPhotoTapListener(mOnPhotoTapListener);
+				Bitmap copy = result.copy(result.getConfig(), true);
+				new DehazeImageTask(copy).execute();
 			}
 		}
 
 	}
-
-	private PhotoViewAttacher mAttacher;
 
 	private class DehazeImageTask extends AsyncTask<Void, Void, Bitmap> {
 
@@ -184,9 +217,11 @@ public class EditActivity extends Activity implements OnClickListener {
 		@Override
 		protected void onPostExecute(Bitmap result) {
 			mPickButton.setVisibility(View.GONE);
-			mImageView.setImageBitmap(result);
-			mImageView.setScaleType(ScaleType.CENTER_INSIDE);
-			mAttacher = new PhotoViewAttacher(mImageView);
+			mResultImageView.setImageBitmap(result);
+			mResultImageView.setScaleType(ScaleType.CENTER_INSIDE);
+			mResultAttacher = new PhotoViewAttacher(mResultImageView);
+			mResultAttacher.setOnPhotoTapListener(mOnPhotoTapListener);
+			mImageSwitcher.setEnabled(true);
 		}
 
 	}
@@ -223,12 +258,9 @@ public class EditActivity extends Activity implements OnClickListener {
 		final int width = options.outWidth;
 		int inSampleSize = 1;
 		Log.v(TAG, "width: " + width + " height: " + height);
-		while ((height / inSampleSize) > reqHeight
-				&& (width / inSampleSize) > reqWidth) {
-			inSampleSize *= 2;
-		}
+		inSampleSize = (int) Math.max(width / (float) reqWidth, height
+				/ (float) reqHeight);
 		Log.v(TAG, "inSampleSize: " + inSampleSize);
 		return inSampleSize;
 	}
-
 }

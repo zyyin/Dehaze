@@ -13,6 +13,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Log;
@@ -23,6 +24,8 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.ImageView.ScaleType;
+import android.widget.Toast;
 import easyimage.slrcamera.ImageProcessX;
 
 public class EditActivity extends Activity implements OnClickListener {
@@ -63,6 +66,11 @@ public class EditActivity extends Activity implements OnClickListener {
 		}
 	}
 
+	@Override
+	public void onClick(View view) {
+		pickImage();
+	}
+
 	private void pickImage() {
 		Intent intent = new Intent();
 		intent.setType("image/*");
@@ -100,43 +108,100 @@ public class EditActivity extends Activity implements OnClickListener {
 		return -1;
 	}
 
+	private void showImage(Uri uri) {
+		new DecodeImageTask(this, uri).execute();
+	}
+
+	private class DecodeImageTask extends AsyncTask<Void, Void, Bitmap> {
+
+		private Context mContext;
+		private Uri mUri;
+
+		public DecodeImageTask(Context context, Uri uri) {
+			mContext = context;
+			mUri = uri;
+		}
+
+		@Override
+		protected Bitmap doInBackground(Void... args) {
+			Bitmap bmp;
+			try {
+				bmp = decodeSampledBitmapFromUri(mContext, mUri,
+						mImageView.getWidth(), mImageView.getHeight());
+			} catch (IOException e) {
+				e.printStackTrace();
+				return null;
+			}
+			int orientation = getOrientation(mContext, mUri);
+			if (orientation > 0) {
+				Matrix matrix = new Matrix();
+				matrix.postRotate(orientation);
+				bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(),
+						bmp.getHeight(), matrix, true);
+			}
+			return bmp;
+		}
+
+		@Override
+		protected void onPostExecute(Bitmap result) {
+			if (result == null) {
+				Toast.makeText(getApplicationContext(),
+						"Error: unable to load image", Toast.LENGTH_LONG)
+						.show();
+			} else {
+				mImageView.setImageBitmap(result);
+				mImageView.setScaleType(ScaleType.CENTER_INSIDE);
+				new DehazeImageTask(result).execute();
+			}
+		}
+
+	}
+
 	private PhotoViewAttacher mAttacher;
 
-	private void showImage(Uri uri) {
-		Bitmap bmp = decodeSampledBitmapFromUri(this, uri,
-				mImageView.getWidth(), mImageView.getHeight());
-		int orientation = getOrientation(this, uri);
-		if (orientation > 0) {
-			Matrix matrix = new Matrix();
-			matrix.postRotate(orientation);
-			bmp = Bitmap.createBitmap(bmp, 0, 0, bmp.getWidth(),
-					bmp.getHeight(), matrix, true);
+	private class DehazeImageTask extends AsyncTask<Void, Void, Bitmap> {
+
+		private Bitmap mBitmap;
+
+		public DehazeImageTask(Bitmap bitmap) {
+			mBitmap = bitmap;
 		}
-		ImageProcessX.AutoDehaze(bmp, ImageProcessX.GetHazeValue(bmp));
-		mImageView.setImageBitmap(bmp);
-		mPickButton.setVisibility(View.GONE);
-		mAttacher = new PhotoViewAttacher(mImageView);
+
+		@Override
+		protected void onPreExecute() {
+			mPickButton.setEnabled(false);
+			mPickButton.setText("Dehazing...");
+			mPickButton.setVisibility(View.VISIBLE);
+		}
+
+		@Override
+		protected Bitmap doInBackground(Void... args) {
+			ImageProcessX.AutoDehaze(mBitmap,
+					ImageProcessX.GetHazeValue(mBitmap));
+			return mBitmap;
+		}
+
+		@Override
+		protected void onPostExecute(Bitmap result) {
+			mPickButton.setVisibility(View.GONE);
+			mImageView.setImageBitmap(result);
+			mImageView.setScaleType(ScaleType.CENTER_INSIDE);
+			mAttacher = new PhotoViewAttacher(mImageView);
+		}
+
 	}
 
 	public static Bitmap decodeSampledBitmapFromUri(Context context, Uri uri,
-			int reqWidth, int reqHeight) {
+			int reqWidth, int reqHeight) throws IOException {
 		Log.v(TAG, "reqWidth: " + reqWidth + " reqHeight: " + reqHeight);
 		ContentResolver cr = context.getContentResolver();
 
 		final BitmapFactory.Options options = new BitmapFactory.Options();
 		// First decode with inJustDecodeBounds=true to check dimensions
 		options.inJustDecodeBounds = true;
-		try {
-			InputStream is = cr.openInputStream(uri);
-			try {
-				BitmapFactory.decodeStream(is, null, options);
-			} finally {
-				is.close();
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-			return null;
-		}
+		InputStream is = cr.openInputStream(uri);
+		BitmapFactory.decodeStream(is, null, options);
+		is.close();
 
 		// Calculate inSampleSize
 		options.inSampleSize = calculateInSampleSize(options, reqWidth,
@@ -145,17 +210,10 @@ public class EditActivity extends Activity implements OnClickListener {
 
 		// Decode bitmap with inSampleSize set
 		options.inJustDecodeBounds = false;
-		try {
-			InputStream is = cr.openInputStream(uri);
-			try {
-				return BitmapFactory.decodeStream(is, null, options);
-			} finally {
-				is.close();
-			}
-		} catch (IOException e) {
-			e.printStackTrace();
-			return null;
-		}
+		is = cr.openInputStream(uri);
+		Bitmap res = BitmapFactory.decodeStream(is, null, options);
+		is.close();
+		return res;
 	}
 
 	public static int calculateInSampleSize(BitmapFactory.Options options,
@@ -171,11 +229,6 @@ public class EditActivity extends Activity implements OnClickListener {
 		}
 		Log.v(TAG, "inSampleSize: " + inSampleSize);
 		return inSampleSize;
-	}
-
-	@Override
-	public void onClick(View view) {
-		pickImage();
 	}
 
 }

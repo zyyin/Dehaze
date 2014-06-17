@@ -1,0 +1,30 @@
+20,21c20,21
+< int   windowsize=15;
+< int   localwindowsize=20;
+---
+> int   windowsize=11;
+> int   localwindowsize=16;
+46c46
+<     int dimone=floor(dimr*dimc*0.001);
+---
+>     int dimone=floor(dimr*dimc*0.0001);
+438,449d437
+< bool Gamma(Mat& img, float gamma, float gain)
+< {
+< 	if (gamma <= 0.0f) return false;
+< 
+< 	double dinvgamma = 1/gamma*gain;
+< 	double dMax = pow(255.0, dinvgamma) / 255.0;
+< 	int dim(256);  
+< 	Mat lut(1,&dim,CV_8U);  
+< 	for(int i = 0; i < 256; i++)  
+< 	{  
+< 		lut.at<uchar>(i) = saturate_cast<uchar>( pow((double)i, dinvgamma) / dMax);
+< 	}  
+451,454d438
+< 	LUT(img, lut, img);
+< 
+< 	return true;
+< }
+480d463
+<     Gamma(tmp, 1.1, 1.0);

@@ -264,7 +264,7 @@ public class EditActivity extends Activity implements OnClickListener {
 		@Override
 		protected Bitmap doInBackground(Void... args) {
 			ImageProcessX.AutoDehaze(mBitmap,
-					ImageProcessX.GetHazeValue(mBitmap));
+					0.f);
 			return mBitmap;
 		}
 
@@ -308,10 +308,11 @@ public class EditActivity extends Activity implements OnClickListener {
 		final int width = options.outWidth;
 		int inSampleSize = 1;
 		Log.v(TAG, "width: " + width + " height: " + height);
-		inSampleSize = Math.round(Math.max(width / (float) reqWidth, height
-				/ (float) reqHeight));
+		while (height / inSampleSize * width / inSampleSize > 300000) {
+			inSampleSize++;
+		}
 		Log.v(TAG, "inSampleSize: " + inSampleSize);
-		return inSampleSize * 2;
+		return inSampleSize;
 	}
 
 	private byte[] getBytes(Bitmap bmp) {
@@ -390,6 +391,7 @@ public class EditActivity extends Activity implements OnClickListener {
 			upload.put("result", mResultFile);
 			upload.put("latitude", getRandomLatitude());
 			upload.put("longitude", getRandomLongitude());
+			upload.put("haze", ImageProcessX.GetHazeValue(mOriginBitmap));
 			upload.saveInBackground(mSaveUploadCallback);
 		}
 	};
